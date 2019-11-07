@@ -26,11 +26,12 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 // Testo pradžioje atliekamas virtualios mašinos "apšildymas" (@Warmup), po kurio
 // testo metodų vykdymo laikas jau matuojamas (@Measurement). Abiem atvejais
 // (tiek "apšildymo", tiek matavimų) testas kartojamas keletą kartų, arba
-// iteracijų (iterations). Kiekvienos iteracijos metu testo metodai pakartotinai
-// vykdomi nurodytą laiko tarpą (pvz. 1 sekundę, kaip nurodyta time ir timeUnit
-// parametrais). Plačiau žr. JMH pavyzdyje JMHSample_20_Annotations.java 
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+// iteracijų (pagal nutylėjimą atliekamos 5 iteracijos). Kiekvienos iteracijos
+// metu testo metodai pakartotinai vykdomi nurodytą laiko tarpą (pvz. 1 sekundę,
+// kaip nurodyta time ir timeUnit parametrais). Plačiau žr. JMH pavyzdyje
+// JMHSample_20_Annotations.java 
+@Warmup(time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(time = 1, timeUnit = TimeUnit.SECONDS)
 public class JmhBenchmark {
 
     static final int OPERATION_COUNT = 1_000;
