@@ -39,7 +39,7 @@ indeksus "gyvai" (`list.get(generator.nextInt())`), didelė dalis pamatuoto laik
 daroma todėl, kad teorinės žinios apie tiriamų duomenų struktūrų veikimą leidžia
 tikėtis, jog metodo vykdymo laikas priklausys nuo sąrašo dydžio (bent jau
 `LinkedList` atveju). Jei, kaip šiuo atveju, tikslus būsimo sąrašo dydis iš
-anksto nėra žinomas, šie dydžiai parenkami laisvai, siekiant ištikri, kaip kinta
+anksto nėra žinomas, šie dydžiai parenkami laisvai, siekiant ištirti, kaip kinta
 metodo vykdymo laikas ilgėjant sąrašui.
 
 Deja, įvykdžius šią programą, gaunami sunkiai paaiškinami rezultatai - padidinus
