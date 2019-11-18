@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -83,6 +84,27 @@ public class JmhBenchmark {
     private void listGet(List<Float> list) {
         for (int i : indexes) {
             list.get(i);
+        }
+    }
+
+    // Kodas, kurio rezultatai nepanaudojami, optimizavimo metu gali būti
+    // pašalintas (pvz. metodo List.get(int) iškvietimas). Siekiant to išvengti,
+    // galima rezultatus perduoti juos "panaudojantiems" Blackhole objektams.
+    // Plačiau žr. JMH pavyzdžiuose JMHSample_08_DeadCode.java ir 
+    // JMHSample_09_Blackholes.java
+    @Benchmark
+    public void arrayListGetAndConsume(Blackhole bh) {
+        listGetAndConsume(arrayList, bh);
+    }
+
+    @Benchmark
+    public void linkedListGetAndConsume(Blackhole bh) {
+        listGetAndConsume(linkedList, bh);
+    }
+    
+    private void listGetAndConsume(List<Float> list, Blackhole bh) {
+        for (int i : indexes) {
+            bh.consume(list.get(i));
         }
     }
 
