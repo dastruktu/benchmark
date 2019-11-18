@@ -47,7 +47,7 @@ sąrašų dydį nuo 4000 iki 8000, metodo vykdymo laikas ne pailgėja, o sutrump
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
-|  4000 |       276.495 |       3582.875 |
+|  4000 |   **276.495** |   **3582.875** |
 |  8000 |        42.795 |       2661.929 |
 | 16000	|        40.154 |       5321.878 |
 | 32000 |        43.965 |       9986.685 |
@@ -75,7 +75,7 @@ matavimų rezultatai būtų nuoseklūs:
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
-| 64000 |       329.833 |      23623.892 |
+| 64000 |   ~~329.833~~ |  ~~23623.892~~ |
 |  4000 |        40.493 |       1423.931 |
 |  8000 |        42.838 |       2683.397 |
 | 16000	|        39.306 |       5241.339 |
@@ -112,14 +112,49 @@ kitais būdais, tačiau `ArrayList.get()` vykdymo laikas skiriasi apie 100 kart�
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
-|  4000 |         0.441 |       1236.023 |
-|  8000 |         0.442 |       2532.494 |
-| 16000	|         0.441 |       5286.967 |
-| 32000 |         0.442 |      10616.272 |
+|  4000 |     **0.441** |       1236.023 |
+|  8000 |     **0.442** |       2532.494 |
+| 16000	|     **0.441** |       5286.967 |
+| 32000 |     **0.442** |      10616.272 |
 
-![JMJ testo rezultatų grafikas](jmh.png)
+![JMH testo rezultatų grafikas](jmh.png)
 
 Padidinę `ArrayList.get()` metodo vykdymų skaičių prieš tai atliktuose
 matavimuose, pastebėtume, jog tada metodo vykdymo laikas visuose testuose
-susivienodina. Priežastis - nepakankamas *Java* virtualios mašino "apšildymas"
-paprastame ir patobulintame testuose, todėl geriau šią funciją palikti JMH.
+susivienodina. Viena iš priežasčių - nepakankamas *Java* virtualios mašinos
+"apšildymas" paprastame ir patobulintame testuose, todėl geriau šią funciją
+palikti JMH.
+
+## Patobulintas JMH greitaveikos testas
+
+Priekabiau pažvelgus į paskutinio testo rezultatus, kuriuose `ArrayList.get()`
+veikimas pagreitėjo 100 kartų, galima pastebėti, jog visose testo realizacijose
+nepanaudojamas `get()` metodo grąžinamas rezultatas. Todėl kodo optimizavimo
+metu tokios perteklinės operacijos gali būti pašalintos. Greitaveikos testuose,
+kur domina ne tiesioginiai kodo vykdymo rezultatai, bet jų gavimo laikas, tenka
+imtis papildomų priemonių, kad tokio pobūdžio optimizacija nebūtų taikoma. JMH
+testuose tai daryti galima įvairiai:
+
+* Paprasčiausias būdas - grąžinti gautą rezultatą iš `@Benchmark` metodo.
+* Jei rezultatų daugiau negu vienas, galima iš jų suformuoti naują reikšmę, kuri
+grąžinama iš `@Benchmark` metodo (pvz. galima apskaičiuoti ir grąžinti dviejų
+skaičių sumą). Šitas būdas tinka tik tada, kai rezultatų apjungimas, palyginti
+su kitomis operacijomis, yra greitas ir testo rezultatų neiškreipia.
+* Universaliausias būdas - naudoti JMH `Blackhole` objektus.
+
+Papildžius greitaveikos testą, kad `get()` metodo grąžinamas sąrašo elementas
+būtų perduotas į `Blackhole`, `ArrayList.get()` vykdymo laikas pailgėja:
+
+|       | ArrayList, us | LinkedList, us |
+|------:|--------------:|---------------:|
+|  4000 |     **5.277** |       1232.701 |
+|  8000 |     **5.284** |       2484.535 |
+| 16000	|     **5.314** |       5061.168 |
+| 32000 |     **5.341** |       9990.668 |
+
+![Patobulinto JMH testo rezultatų grafikas](jmh_improved.png)
+
+Svarbu nepamiršti, jog panašaus pobūdžio mikro testai matuoja kodo greitaveiką
+dirbtinėmis sąlygomis ir realiose programose to paties kodo veikimo greitis gali
+skirtis. JMH įrankis tik suteikia priemones programuotojui padidinti mikro testų
+patikimumą.

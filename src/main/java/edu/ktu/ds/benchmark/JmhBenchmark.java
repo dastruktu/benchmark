@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
@@ -26,11 +27,12 @@ import org.openjdk.jmh.runner.options.OptionsBuilder;
 // Testo pradžioje atliekamas virtualios mašinos "apšildymas" (@Warmup), po kurio
 // testo metodų vykdymo laikas jau matuojamas (@Measurement). Abiem atvejais
 // (tiek "apšildymo", tiek matavimų) testas kartojamas keletą kartų, arba
-// iteracijų (iterations). Kiekvienos iteracijos metu testo metodai pakartotinai
-// vykdomi nurodytą laiko tarpą (pvz. 1 sekundę, kaip nurodyta time ir timeUnit
-// parametrais). Plačiau žr. JMH pavyzdyje JMHSample_20_Annotations.java 
-@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
-@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+// iteracijų (pagal nutylėjimą atliekamos 5 iteracijos). Kiekvienos iteracijos
+// metu testo metodai pakartotinai vykdomi nurodytą laiko tarpą (pvz. 1 sekundę,
+// kaip nurodyta time ir timeUnit parametrais). Plačiau žr. JMH pavyzdyje
+// JMHSample_20_Annotations.java 
+@Warmup(time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(time = 1, timeUnit = TimeUnit.SECONDS)
 public class JmhBenchmark {
 
     static final int OPERATION_COUNT = 1_000;
@@ -82,6 +84,27 @@ public class JmhBenchmark {
     private void listGet(List<Float> list) {
         for (int i : indexes) {
             list.get(i);
+        }
+    }
+
+    // Kodas, kurio rezultatai nepanaudojami, optimizavimo metu gali būti
+    // pašalintas (pvz. metodo List.get(int) iškvietimas). Siekiant to išvengti,
+    // galima rezultatus perduoti juos "panaudojantiems" Blackhole objektams.
+    // Plačiau žr. JMH pavyzdžiuose JMHSample_08_DeadCode.java ir 
+    // JMHSample_09_Blackholes.java
+    @Benchmark
+    public void arrayListGetAndConsume(Blackhole bh) {
+        listGetAndConsume(arrayList, bh);
+    }
+
+    @Benchmark
+    public void linkedListGetAndConsume(Blackhole bh) {
+        listGetAndConsume(linkedList, bh);
+    }
+    
+    private void listGetAndConsume(List<Float> list, Blackhole bh) {
+        for (int i : indexes) {
+            bh.consume(list.get(i));
         }
     }
 
