@@ -1,160 +1,153 @@
-# Duomenų struktūrų greitaveikos tyrimas
+# Benchmarking data structures
 
-Tinkamų duomenų stuktūrų parinkimas leidžia kuriamose programose efektyviau
-panaudoti turimus kompiuterinius resursus. Pagrindinės duomenų struktūrų
-charakteristikos, įtakojančios jų tinkamumą tam tikram projektui, yra įvairių
-operacijų su nagrinėjama duomenų struktūra atlikimo *greitis* ir struktūros
-naudojamas *atminties kiekis*. Šiame dokumente aptarsime, kokios problemos
-iškyla bandant įvertinti *Java* parašyto programinio kodo greitaveiką,
-ir apžvelgsime galimus tų problemų sprendimo būdus.
+The selection of appropriate data structures enables your programs to better
+utilise available computing resources. The main characteristics of data
+structures that affect their suitability for the particular project are
+the *speed* of various operations with data structure and *memory size* used
+store it. This document discusses the problems that arise when benchmarking
+*Java* program code and presents the way to solve them.
 
-Tarkime, kad programoje reikalingas dinamiškas vienmatis (ir potecialiai
-didelis) vienodo tipo elementų sąrašas, ir svarbu, jog kiekvienas elementas
-pagal jo numerį, t.y. indeksą, būtų pasiekiamas kuo greičiau. Java platformos
-standartinėje bibliotekoje tam galima panaudoti `java.util.ArrayList` arba
-`java.util.LinkedList` klases. Abi jos realizuoja metodą `get(int index)`,
-kurio veikimo greitis šiose klasėse mus ir domina.
+Suppose our program needs dynamic one dimensional (and potentially large) list
+of elements of the same  type and each element should be accessible by its
+sequence number (i.e. index) as fast possible. The standard library of Java
+has `java.util.ArrayList` and `java.util.LinkedList` classes that are well
+suited for that purpose. Both of them implement method `get(int index)` and
+we'd like to access the speed of its execution in given classes.
 
-## Paprastas greitaveikos testas
+## Simple benchmark
 
-Klasėje `edu.ktu.ds.benchmark.SimpleBenchmark` pateikta paprasčiausia realizacija
-greitaveikos testo, kuris pamatuoja, kiek laiko užtrunka įvykdyti `ArrayList.get()'
-ir `LinmkedList.get()` metodus - t.y., kuris iš jų greitesnis. Joje reikėtų atkreipti
-dėmesi į kelis aspektus:
+Class `edu.ktu.ds.benchmark.SimpleBenchmark` provides the simplest implementation
+of benchmark that measures execution time of `ArrayList.get()' and `LinmkedList.get()`
+methods - i.e.,  which one of them is faster. Benchmarking code takes into account
+these issues:
 
-* Siekiant sumažinti laiko matavimo paklaidų įtaką, dominanti operacija, kaip
-šiuo atveju tiriamas `get()` metodas, atliekama daug (pvz. 1000) kartų.
-* Metodas testuojamas su atsitiktiniais indeksais, pagal kuriuos iš sąrašo paimami
-elementai. Tai leidžia gauti bendresnius tyrimo rezultatus. Patys sąrašai taip
-pat užpildomi atsitiktinėmis reikšmėmis, bet tai šiuo atveju nėra svarbu, nes 
-`get()` metodo greitis neturėtų priklausyti nuo to, kokie duomenys saugomi sąraše.
-* Iš kodo, kurio vykdymo laikas matuojamas, pašalinama kuo daugiau pagalbinių
-operacijų, nes jos gali iškreipti testo rezultatus. Šiuo atveju tai yra atsitiktinių
-indeksų generavimas - net jei jie nebūtų pakartotinai panaudojami abiems tiriamiems
-sąrašams, vis tiek reikėtų juos sugeneruoti prieš atliekant matavimus. Generuojant
-indeksus "gyvai" (`list.get(generator.nextInt())`), didelė dalis pamatuoto laiko
-(šiuo atveju - apie pusę) būtų skirta atsitiktinių skaičių generavimui ir su pačia
-`get()` operacija nieko bendro neturėtų.
-* Metodo `get()` greitis matuojamas su keliais skirtingais sąrašų dydžiais. Taip
-daroma todėl, kad teorinės žinios apie tiriamų duomenų struktūrų veikimą leidžia
-tikėtis, jog metodo vykdymo laikas priklausys nuo sąrašo dydžio (bent jau
-`LinkedList` atveju). Jei, kaip šiuo atveju, tikslus būsimo sąrašo dydis iš
-anksto nėra žinomas, šie dydžiai parenkami laisvai, siekiant ištirti, kaip kinta
-metodo vykdymo laikas ilgėjant sąrašui.
+* In order to minimize the error of time measurements, the measured operation,
+  `get()` method in our case, is executed many (e.g. 1000) times.
+* Method is benchmarked using random indexes that are used to take elements from the list.
+  This allow to obtain more generalised benchmark results. The lists are populated by
+  random values as well, though that should bear no importance in our case, as `get()`
+  method speed should not depend on data that is saved in the list.
+* Utility operations that the benchmarked code can run without are removed as they
+  influence benchmark results. In our case they constitute generation of random indexes.
+  Even if those indexes wouldn't be reused for both benchmarked lists, the indexes should
+  be  generated before measuring benchmark time. If "live" index generation is used
+  (`list.get(generator.nextInt())`), the substantial amount of measured time (about half
+  of it in our case) would be used for running random generator that is not directly related
+  to `get()` operation.
+* The speed of `get()` method is measured using lists of various size. The reason for
+  that comes from theoretical background of benchmarked data structures that leads us
+  to expect that operation runtime depends on list size (at least in case of `LinkedList`).
+  If, as in given benchmark, the exact size of measured list is not known beforehand,
+  they are freely chosen in oder to examine the runtime dependency of increased list size.
 
-Deja, įvykdžius šią programą, gaunami sunkiai paaiškinami rezultatai - padidinus
-sąrašų dydį nuo 4000 iki 8000, metodo vykdymo laikas ne pailgėja, o sutrumpėja:
+Unfortunately, the first implementation of list benchmark gives us results that are hard
+to explain: when list size is increased from 4000 to 8000, method is executed even faster:
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
 |  4000 |   **276.495** |   **3582.875** |
 |  8000 |        42.795 |       2661.929 |
-| 16000	|        40.154 |       5321.878 |
+| 16000 |        40.154 |       5321.878 |
 | 32000 |        43.965 |       9986.685 |
 
-![Paprasto testo rezultatų grafikas](simple.png)
+![Simple_benchmark_result graph](simple.png)
 
-## Patobulintas greitaveikos testas
+## Improved benchmark
 
-Galima pastebėti, kad bendrame paprasto greitaveikos testo rezultatų fone išsiskiria
-laikas, gautas matavimų pradžioje (su 4000 elementų sąrašais). Testo pradžioje
-skaičiavimai atliekami lėčiau. Rezultatai, gauti su 8000, 16000 ir 32000 elementų
-sąrašais yra nuoseklūs ir pagrįsti duomenų strukūtų teorija: `ArrayList` elemento
-gavimas pagal indeksą turėtų būti pastovus ir nepriklausyti nuo sąrašo ilgio, o
-`LinkedList` - būti tiesiogiai proporcingas sąrašo ilgiui.
+One can observe that excecution time that was measured at the start of benchmark
+(with lists of 4000 elements) differs from other measurements. At the beginning
+benchmarking tests run slower. Results that we get for list with  8000, 16000 and
+32000 elements are consistent and echoes the theroy of data structures: time for
+getting `ArrayList` element by index should be constant and not depend on list
+size, while for `LinkedList` - proportional to lise size.
 
-Šis testo rezultatų netolygumas gaunamas dėl *Java* virtualio mašinos atliekamų
-programinio kodo optimizacijų. Optimizavimas atliekamas programos vykdymo metu
-ir paprastai paprastai įsijungia po tam tikro atliktų operacijų kiekio. Mūsų
-nagrinėjamu atveju tai maždaug sutapo su sarašų pailginimu nuo 4000 iki 8000
-elementų. Vienas iš galimų šios problemos sprendimų - atmesti su 4000 elementų
-sąrašais gautus matavimus. Arba, jei metodo `get()` veikimas su 4000 elementų
-sąrašu reikalingas, testo pradžioje atlikti matavimus su papildomu ilgu (pvz.
-64000 elementų) sąrašu, kurių metu turėtų įsijungti kodo optimizacija ir tolesni
-matavimų rezultatai būtų nuoseklūs:
+The inconsistency of benchmark results comes from code optimizations that are
+performed by *Java* virtual machine. Optimizations are carried out at runtime and
+usually are triggered after the particular number of code executions. Ir our case
+optimization was performed roughly at the same time when list size is changed from
+4000 to 8000 elements. One of possible solutions is to discard the results from
+benchmarking lists with 4000 elements. Or, if `get()` method execution speed with
+4000 element list is required, benchmark can be started with additional long lists
+(e.g. 64000 element) that should trigger code optimizations and leave subsequent
+results in more consistent state:
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
 | 64000 |   ~~329.833~~ |  ~~23623.892~~ |
 |  4000 |        40.493 |       1423.931 |
 |  8000 |        42.838 |       2683.397 |
-| 16000	|        39.306 |       5241.339 |
+| 16000 |        39.306 |       5241.339 |
 | 32000 |        39.228 |      10302.222 |
 
 
-![Patobulinto testo rezultatų grafikas](improved.png)
+![Improved_benchmark result graph](improved.png)
 
-## JMH greitaveikos testas
+## JMH benchmark
 
-Greitaveikos matavimų patobulinimas, prieš laiko matavimą "apšildantis" *Java*
-virtualią mašiną, - papildomas kodas, kurį reikėtų naudoti kiekvieno *Java* kodo
-greitaveiką matuojančio testo pradžioje. Be to, kaip pamatysime toliau, toks
-"rankinis" virtualios mašinos apšildymas negarantuoja, jog bus pasiektas kodo
-optimizacijos lygis, kokį pasieks ilgai veikiantis testuojamas *Java* kodas.
-Programuotojo požiūriu, *Java* virtuali mašina atlikdama kodo optimizacijas
-veikia kaip "juoda dėžė", ir priemonių kodo optimizacavimo proceso valdymui
-programuotojai neturi. Todėl *Java* virtualios mašinos kūrėjai pateikia įrankį,
-skirtą palengvinti *Java* kodo greitaveikos tyrimus - *JHM* ([Java Microbenchmark
-Harness](https://openjdk.java.net/projects/code-tools/jmh/)), Jis pagal greitaveikos
-testo anotacijas sugeneruoja papildomą *Java* kodą, padidinantį testo rezultatų
-patikimumą.
+Improvements of "improved" benchmark that "warpup" *Java* virtual machine contain
+extra code that would be necessary for all *Java* benchmarking implementations.
+Even so, as we'll see further, such "manual" warmup does not guarantee that we'll
+reach the same level of optimizations as long-running *Java* code. From programmer
+perspective *Java* virtual machine works like a "black box" since it does not
+provide any tools to control the process of runtime optimizations. That prompted
+*Java* VM developers to create a tool to facilitate benchmarking *Java* code -  
+*JHM* ([Java Microbenchmark Harness](https://openjdk.java.net/projects/code-tools/jmh/)).
+It uses benchark annotations to generate supplementary *Java* code that enhances
+reliability or benchmark results.
 
-Klasėje `JmhBenchmark` pateikiamas `ArrayList.get()` ir `LinkedList.get()` metodų
-greitaveiką matuojantis testas, realizuotas *JMH* pagrindu. Pati testo logika
-tokia pati, kaip `SimpleBenchmark` atveju. *JMH* įvykdo `@Benchmark` anotacija
-pažymėtus klasės metodus ir pamatuoja jiems sugaištą laiką (anotacijų prasmė
-paaiškinta kodo komentaruose). JMH pagal kodo anotacijas sugeneruoja papildomą
-testų vykdymo kodą, todėl, keičiant testą aprašančias anotacijas, reikėtų
-perkompiliuoti projektą iš naujo (pvz. "Clean and Build" Netbeans aplinkoje).
+`JmhBenchmark` class provides *JMH* benchmarks for `ArrayList.get()` ir `LinkedList.get()`
+methods. Benchmarks use the same logic as in `SimpleBenchmark`. *JMH* runs `@Benchmark`
+annotated class methods and measures their execution time (the purpose of this and other
+annotations are provided in code comments). *JMH* uses annotation for code generation,
+thus changing annotation require project rebuild (e.g. "Build -> Rebuild Project" in
+IntelliJ IDEA).
 
-JMH greitaveikos testo rezultatai `LinkedList.get()` metodui panašūs į gautus
-kitais būdais, tačiau `ArrayList.get()` vykdymo laikas skiriasi apie 100 kartų:
+*JMH* benchmark results for `LinkedList.get()` are similar to the ones from before, but
+`ArrayList.get()` execution time is around 100 times shorter:
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
 |  4000 |     **0.441** |       1236.023 |
 |  8000 |     **0.442** |       2532.494 |
-| 16000	|     **0.441** |       5286.967 |
+| 16000 |     **0.441** |       5286.967 |
 | 32000 |     **0.442** |      10616.272 |
 
-![JMH testo rezultatų grafikas](jmh.png)
+![JMH benchmark result graph](jmh.png)
 
-Padidinę `ArrayList.get()` metodo vykdymų skaičių prieš tai atliktuose
-matavimuose, pastebėtume, jog tada metodo vykdymo laikas visuose testuose
-susivienodina. Viena iš priežasčių - nepakankamas *Java* virtualios mašinos
-"apšildymas" paprastame ir patobulintame testuose, todėl geriau šią funciją
-palikti JMH.
+If we had increased execution count of `ArrayList.get()` in our previous benchmark,
+we'd get similar execution times in all our benchmarks. One of the reasons is
+insufficient "warmup" of *Java* virtual machine in both simple and improved
+benchmarks, thus it's better to leave this function to JMH.
 
-## Patobulintas JMH greitaveikos testas
+## Enhanced JMH benchmark
 
-Priekabiau pažvelgus į paskutinio testo rezultatus, kuriuose `ArrayList.get()`
-veikimas pagreitėjo 100 kartų, galima pastebėti, jog visose testo realizacijose
-nepanaudojamas `get()` metodo grąžinamas rezultatas. Todėl kodo optimizavimo
-metu tokios perteklinės operacijos gali būti pašalintos. Greitaveikos testuose,
-kur domina ne tiesioginiai kodo vykdymo rezultatai, bet jų gavimo laikas, tenka
-imtis papildomų priemonių, kad tokio pobūdžio optimizacija nebūtų taikoma. JMH
-testuose tai daryti galima įvairiai:
+Upon examination of results from last benchmark, where `ArrayList.get()` performed
+much faster than other methods, one can notice that benchmark implementation don't
+use `get()` method return value. That leads to optimization that removes redundant
+code. Benchmarks that intent to measure code execution time but are not concerned
+about results of running that code need additional means to avoid such optimizations.
+*JMH* has several ways to do that:
 
-* Paprasčiausias būdas - grąžinti gautą rezultatą iš `@Benchmark` metodo.
-* Jei rezultatų daugiau negu vienas, galima iš jų suformuoti naują reikšmę, kuri
-grąžinama iš `@Benchmark` metodo (pvz. galima apskaičiuoti ir grąžinti dviejų
-skaičių sumą). Šitas būdas tinka tik tada, kai rezultatų apjungimas, palyginti
-su kitomis operacijomis, yra greitas ir testo rezultatų neiškreipia.
-* Universaliausias būdas - naudoti JMH `Blackhole` objektus.
+* The simplest approach is to return the calculation result from `@Benchmark` method.
+* If we have more than one result, they can be combined to new value that is returned
+  from `@Benchmark` method (e.g. a sum of two number can be calculated). This way is only
+  applicable is combining results, relative to other calculations, is fast and does not
+  distort benchmark results.
+* The most universal way is to use *JMH* `Blackhole` abjects.
 
-Papildžius greitaveikos testą, kad `get()` metodo grąžinamas sąrašo elementas
-būtų perduotas į `Blackhole`, `ArrayList.get()` vykdymo laikas pailgėja:
+If we add `Blackhole` objects so our benchmarks and supply the elements we get from
+`get()` method to these objects, `ArrayList.get()` execution time increases:
 
 |       | ArrayList, us | LinkedList, us |
 |------:|--------------:|---------------:|
 |  4000 |     **5.277** |       1232.701 |
 |  8000 |     **5.284** |       2484.535 |
-| 16000	|     **5.314** |       5061.168 |
+| 16000 |     **5.314** |       5061.168 |
 | 32000 |     **5.341** |       9990.668 |
 
-![Patobulinto JMH testo rezultatų grafikas](jmh_improved.png)
+![Enhanced JMH benchmark result graph](jmh_improved.png)
 
-Svarbu nepamiršti, jog panašaus pobūdžio mikro testai matuoja kodo greitaveiką
-dirbtinėmis sąlygomis ir realiose programose to paties kodo veikimo greitis gali
-skirtis. JMH įrankis tik suteikia priemones programuotojui padidinti mikro testų
-patikimumą.
+It should be noted that such micro benchmarks use artificial environment to measure
+code execution speed and in real life scenarios the same code can behave differently.
+*JMH* tools only provide programmer with instruments to enhance the reliability
+of micro benchmarks.
